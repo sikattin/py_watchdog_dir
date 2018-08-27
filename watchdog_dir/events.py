@@ -20,8 +20,8 @@ SMTPHOST = '59.128.93.227'
 EXT_SERVER_PATCH = ".server"
 DST_PATH_TEST = r'/mnt/shared/test'
 DST_PATH_PRE = r'/mnt/shared/pre'
-REGEXP_TEST = '.+test'
-REGEXP_PRE = '.+pre'
+REGEXP_TEST = '.+/test/.+'
+REGEXP_PRE = '.+/pre/.+'
 
 class FTPEventHandler(FileSystemEventHandler):
     """イベントハンドラ
@@ -133,7 +133,7 @@ class FTPEventHandler(FileSystemEventHandler):
             self._send_mail("Failed to transfer a file {}".format(os.path.basename(src_path)),
                             "Failed to copy {0} to {1}".format(src_path, dst_path))
         else:
-            self._logger.info("succeeded to copy a file {1} to {2}".format(src_path, dst_path))
+            self._logger.info("succeeded to copy a file {0} to {1}".format(src_path, dst_path))
             # send mail
             self._send_mail("Transferd {}".format(os.path.basename(src_path)),
                             "transfering process is ok.")
