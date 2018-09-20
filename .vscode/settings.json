@@ -1,0 +1,3 @@
+{
+    "python.pythonPath": "${workspaceFolder}\\flask_webapi\\Scripts\\python.exe"
+}
