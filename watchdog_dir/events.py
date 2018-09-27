@@ -109,9 +109,10 @@ class FTPEventHandler(FileSystemEventHandler):
                             for line in lines[::-1]:
                                 # 正規表現を修正する
                                 # re.search(r"(OK UPLOAD.+{}\", )([0-9]+ bytes)", line)
-                                match = re.search(r"(OK UPLOAD.+{}\", )([0-9]+ bytes)".format(filename), line)
+                                match = re.search(r"(\[pid.+])(OK UPLOAD.+{}\", )([0-9]+ bytes)".format(filename), line)
                                 if match is not None:
-                                    file_bytesize = match.group(2).split()[0]
+                                    file_bytesize = match.group(3).split()[0]
+                                    upload_user = match.group(1).split()[2][1:-1]
                                     self._logger.debug("result of parsing log file: {} bytes".format(file_bytesize))
                                     # break for statement.
                                     break
@@ -130,10 +131,10 @@ class FTPEventHandler(FileSystemEventHandler):
                             # when file size is equal.
                             if os.path.getsize(event.src_path) == int(file_bytesize):
                                 self._logger.info("{0} has completely uploaded. "
-                                                "file size is {1} bytes"
-                                                .format(event.src_path, file_bytesize))
+                                                "file size is {1} bytes. upload user is {2}"
+                                                .format(event.src_path, file_bytesize, upload_user))
                                 # copy server patch to specified directory
-                                self.copy_server_patch(event.src_path)
+                                self.copy_server_patch(event.src_path, upload_user=upload_user)
                                 # break for statement of else clause.
                                 break
                             # when file size is not equal.
@@ -203,7 +204,7 @@ class FTPEventHandler(FileSystemEventHandler):
         checksum = md5.hexdigest()
         return checksum
 
-    def copy_server_patch(self, src_path: str):
+    def copy_server_patch(self, src_path: str, upload_user=None):
         """transfer server patch to the specified directory.
         
         Args:
@@ -214,6 +215,7 @@ class FTPEventHandler(FileSystemEventHandler):
             dst_path = DST_PATH_TEST
         elif re.match(REGEXP_PRE, src_path):
             dst_path = DST_PATH_PRE
+
         try:
             shutil.copy(src_path, dst_path)
         except:
@@ -230,7 +232,9 @@ class FTPEventHandler(FileSystemEventHandler):
             self._send_mail("{0} was transferd to {1}".format(filename, dst_path),
                             "Src_path(ftp server): {0}\r\n"
                             "Dst_path(mount directory): {1}\r\n"
-                            "MD5: {2}".format(src_path, dst_path, result))
+                            "MD5: {2}"
+                            "Upload_user: {3}"
+                            .format(src_path, dst_path, result, upload_user))
             return (src_path, dst_path)
 
     def _send_mail(self, subject: str, mailbody: str):
