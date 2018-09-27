@@ -109,10 +109,12 @@ class FTPEventHandler(FileSystemEventHandler):
                             for line in lines[::-1]:
                                 # 正規表現を修正する
                                 # re.search(r"(OK UPLOAD.+{}\", )([0-9]+ bytes)", line)
-                                match = re.search(r"(\[pid.+])(OK UPLOAD.+{}\", )([0-9]+ bytes)".format(filename), line)
+                                match = re.search(r"(\[pid [0-9]+\] \[.+\]).+(OK UPLOAD.+{}\", )([0-9]+ bytes)".format(filename), line)
                                 if match is not None:
                                     file_bytesize = match.group(3).split()[0]
+                                    self._logger.debug("filebyte: {}".format(file_bytesize))
                                     upload_user = match.group(1).split()[2][1:-1]
+                                    self._logger.debug("uploaduser: {}".format(upload_user))
                                     self._logger.debug("result of parsing log file: {} bytes".format(file_bytesize))
                                     # break for statement.
                                     break
@@ -196,6 +198,9 @@ class FTPEventHandler(FileSystemEventHandler):
         
         Returns:
             int: md5 check sum
+        
+        Raises:
+            IOError, OSError
         """
         md5 = hashlib.md5()
         with open(path, mode='rb') as f:
@@ -211,6 +216,7 @@ class FTPEventHandler(FileSystemEventHandler):
             src_path (str): source path of copy targeted file.
         """
         dst_path = ''
+        result = ''
         if re.match(REGEXP_TEST, src_path):
             dst_path = DST_PATH_TEST
         elif re.match(REGEXP_PRE, src_path):
@@ -224,15 +230,19 @@ class FTPEventHandler(FileSystemEventHandler):
             self._send_mail("Failed to transfer a file {}".format(os.path.basename(src_path)),
                             "Failed to copy {0} to {1}".format(src_path, dst_path))
         else:
+            try:
+                # calc md5 checksum
+                filename = os.path.basename(src_path)
+                result = self.calc_md5sum_of_fileobj(os.path.join(dst_path, filename))
+            except (IOError, OSError) as e:
+                self._logger.error("Failed to calculate md5 checksum. Reason: {}".format(e))
+
             self._logger.info("Succeeded to copy a file {0} to {1}".format(src_path, dst_path))
-            filename = os.path.basename(src_path)
-            # calc md5 checksum
-            result = self.calc_md5sum_of_fileobj(os.path.join(dst_path, filename))
             # send mail
             self._send_mail("{0} was transferd to {1}".format(filename, dst_path),
                             "Src_path(ftp server): {0}\r\n"
                             "Dst_path(mount directory): {1}\r\n"
-                            "MD5: {2}"
+                            "MD5: {2}\r\n"
                             "Upload_user: {3}"
                             .format(src_path, dst_path, result, upload_user))
             return (src_path, dst_path)
