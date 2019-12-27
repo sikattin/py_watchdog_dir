@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-# Learn more: https://github.com/kennethreitz/setup.py
 
 from setuptools import setup, find_packages
 import os
@@ -8,7 +7,7 @@ import os
 requirement = ['watchdog',
                'mylogger',
 ]
-description = 'Observe the specified directories below. Import watchdog_dir.event.'
+description = 'Observe changes on specified directories. Import watchdog_dir.event'
 
 
 with open('README.rst') as f:
@@ -23,7 +22,7 @@ setup(
     description=description,
     long_description=readme,
     author='Takeki Shikano',
-    author_email='shikano.takeki@nexon.co.jp',
+    author_email='',
     require=requirement,
     url=None,
     license='MIT',

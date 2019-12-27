@@ -55,7 +55,9 @@ class FTPEventHandler(FileSystemEventHandler):
             self._config['MAIL']['CC'] = ''
             self._config['MAIL']['SMTP_HOST'] = SMTPHOST
             self._config['LOG']['LOG_PATH'] = LOGPATH
-            self._config['GENERAL']['WATCH_LOG'] = ''
+            self._config['GENERAL']['WATCH_LOG'] = LOG_FILE
+        self.smtp_host = self._config['MAIL']['SMTP_HOST']
+
         # log file
         try:
             self.logpath = self._config['LOG']['LOG_PATH']
@@ -68,7 +70,7 @@ class FTPEventHandler(FileSystemEventHandler):
         try:
             self.watchlog = self._config['GENERAL']['WATCH_LOG']
         except KeyError:
-            self.watchlog = ''
+            self.watchlog = LOG_FILE
         # target directory for watching
         self.target_dir = target_dir
         # setup logger
@@ -80,15 +82,17 @@ class FTPEventHandler(FileSystemEventHandler):
                 except:
                     print("can't create log directory.check error messages.")
                     raise
-            rotlogger_fac = RotationLoggerFactory(loglevel=loglevel)
+            rotlogger_fac = RotationLoggerFactory(logger_name=__name__,
+                                                  loglevel=loglevel
+            )
             self._logger = rotlogger_fac.create(file=self.logpath, max_bytes=100000)
             print("write log in {}".format(self.logpath))
 
     def on_created(self, event):
-        """[summary]
+        """triggered by creating file/dir on observed directory
         
         Args:
-            event ([type]): [description]
+            event ([type]): watchdog event object
         """
         filesize = os.path.getsize(event.src_path)
         filename = os.path.basename(event.src_path)
@@ -128,6 +132,8 @@ class FTPEventHandler(FileSystemEventHandler):
                         # break while statement
                         break
                     else:
+                        ## verifying upload status whether the file was complete
+                        ## ly uploaded.
                         # compare file size on local with written it in log file.
                         for i in range(0, 5):
                             # when file size is equal.
@@ -160,10 +166,10 @@ class FTPEventHandler(FileSystemEventHandler):
         print("ファイル {} が作成されました。".format(filename))
 
     def on_modified(self, event):
-        """[summary]
+        """triggered by modified file/dir on observed directory
         
         Args:
-            event ([type]): [description]
+            event ([type]): watchdog event object
         """
 
         filepath = event.src_path
@@ -171,27 +177,27 @@ class FTPEventHandler(FileSystemEventHandler):
         print("ファイル {} が変更されました。".format(filename))
 
     def on_deleted(self, event):
-        """[summary]
+        """triggered by deleted file/dir on observed directory
         
         Args:
-            event ([type]): [description]
+            event ([type]): watchdog event object
         """
         filepath = event.src_path
         filename = os.path.basename(filepath)
         print("ファイル {} が削除されました。".format(filename))
 
     def on_moved(self, event):
-        """[summary]
+        """triggered by moved file/dir on observed directory
         
         Args:
-            event ([type]): [description]
+            event ([type]): watchdog event object
         """
         filepath = event.src_path
         filename = os.path.basename(filepath)
         print("ファイル {0} が {1} に移動しました。".format(filename, event.dst_path))
 
     def calc_md5sum_of_fileobj(self, path: str):
-        """[summary]
+        """get md5hash of the specified file.
         
         Args:
             path (str): file path
@@ -217,6 +223,9 @@ class FTPEventHandler(FileSystemEventHandler):
         """
         dst_path = ''
         result = ''
+        if upload_user is None:
+            upload_user = ''
+
         if re.match(REGEXP_TEST, src_path):
             dst_path = DST_PATH_TEST
         elif re.match(REGEXP_PRE, src_path):
@@ -254,7 +263,7 @@ class FTPEventHandler(FileSystemEventHandler):
             subject (str): Subject of mail
             mailbody (str): Body of mail
         """
-        with smtplib.SMTP(self._config['MAIL']['SMTP_HOST']) as smtp:
+        with smtplib.SMTP(self.smtp_host) as smtp:
             smtp.ehlo()
             msg = EmailMessage()
             msg.set_content(mailbody)

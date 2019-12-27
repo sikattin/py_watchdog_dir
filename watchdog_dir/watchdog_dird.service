@@ -1,0 +1,12 @@
+[Unit]
+Description=Monitoring the specified directory
+
+[Service]
+ExecStart=/usr/bin/python3.6 /usr/local/watchdog_dird/watch_dir.py --directory /srv/ftp_local --loglevel 10
+ExecStop=/bin/kill ${MAINPID}
+Restart=always
+# run as background
+Type=simple
+
+[Install]
+WantedBy=multi-user.target
